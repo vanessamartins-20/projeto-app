@@ -1,227 +1,209 @@
+
 import React, { useState } from "react";
-import JogoDaVelha from "./jogodavelha";
-import {
-  StyleSheet,
-  Text,
-  View,
-  Image,
-  TouchableOpacity,
-  TextInput,
-  ScrollView,
-} from "react-native";
+import { StyleSheet,Text,View,TouchableOpacity, TextInput,} from "react-native";
 
-export default function App() {
-  const [nome1, setNome1] = useState("Joao Vitor");
-  const [nome2, setNome2] = useState("Maria");
-  const [nome3, setNome3] = useState("Carlos");
+export default function UrnaEletronica() {
+  // Estados dos candidatos
+  const [votosA, setVotosA] = useState(0);
+  const [votosB, setVotosB] = useState(0);
+  const [votosC, setVotosC] = useState(0);
 
-  const [seguindo1, setSeguindo1] = useState(false);
-  const [seguindo2, setSeguindo2] = useState(false);
-  const [seguindo3, setSeguindo3] = useState(false);
+  // Estado do mesário
+  const [nomeMesario, setNomeMesario] = useState("");
+
+  // Dados derivados
+  const totalVotos = votosA + votosB + votosC;
+
+  // Porcentagens
+  const porcentagemA =
+    totalVotos === 0 ? 0 : (votosA / totalVotos) * 100;
+
+  const porcentagemB =
+    totalVotos === 0 ? 0 : (votosB / totalVotos) * 100;
+
+  const porcentagemC =
+    totalVotos === 0 ? 0 : (votosC / totalVotos) * 100;
+
+  // Função para zerar a urna
+  const zerarUrna = () => {
+    setVotosA(0);
+    setVotosB(0);
+    setVotosC(0);
+  };
 
   return (
-    <ScrollView>
-      <View style={styles.container}>
+    <View style={styles.container}>
+      <Text style={styles.titulo}>Painel de Votação</Text>
 
-        {/* CARTÃO 1 */}
-        <View style={styles.cartao}>
+      {/* Mesário */}
+      <TextInput
+        style={styles.input}
+        placeholder="Digite o nome do mesário"
+        value={nomeMesario}
+        onChangeText={setNomeMesario}
+      />
 
-          <Image
-            source={{
-              uri: "https://via.placeholder.com/150",
-            }}
-            style={styles.avatar}
-          />
+      <Text style={styles.mesario}>
+        Mesário atual: {nomeMesario}
+      </Text>
 
-          <Text style={styles.nomeUsuario}>
-            {nome1}
-          </Text>
+      {/* Candidato A */}
+      <View style={styles.candidatoContainer}>
+        <Text style={styles.nomeCandidato}>
+          Candidato A: {votosA} votos
+        </Text>
 
-          <Text style={styles.profissao}>
-            Engenheiro de Software
-          </Text>
+        <Text style={styles.porcentagem}>
+          {porcentagemA.toFixed(1)}%
+        </Text>
 
-          <TouchableOpacity
-            style={
-              seguindo1
-                ? [styles.botao, styles.botaoDesativado]
-                : styles.botao
-            }
-            activeOpacity={0.7}
-            onPress={() => setSeguindo1(!seguindo1)}
-          >
-            <Text style={styles.textoBotao}>
-              {seguindo1 ? "Já Seguindo" : "Seguir"}
-            </Text>
-          </TouchableOpacity>
-
-          <TextInput
-            style={styles.input}
-            placeholder="Alterar nome..."
-            value={nome1}
-            onChangeText={(texto) => setNome1(texto)}
-          />
-
-        </View>
-
-
-        {/* CARTÃO 2 */}
-        <View style={styles.cartao}>
-
-          <Image
-            source={{
-              uri: "https://via.placeholder.com/150",
-            }}
-            style={styles.avatar}
-          />
-
-          <Text style={styles.nomeUsuario}>
-            {nome2}
-          </Text>
-
-          <Text style={styles.profissao}>
-            Desenvolvedora
-          </Text>
-
-          <TouchableOpacity
-            style={
-              seguindo2
-                ? [styles.botao, styles.botaoDesativado]
-                : styles.botao
-            }
-            activeOpacity={0.7}
-            onPress={() => setSeguindo2(!seguindo2)}
-          >
-            <Text style={styles.textoBotao}>
-              {seguindo2 ? "Já Seguindo" : "Seguir"}
-            </Text>
-          </TouchableOpacity>
-
-          <TextInput
-            style={styles.input}
-            placeholder="Alterar nome..."
-            value={nome2}
-            onChangeText={(texto) => setNome2(texto)}
-          />
-
-        </View>
-
-
-        {/* CARTÃO 3 */}
-        <View style={styles.cartao}>
-
-          <Image
-            source={{
-              uri: "https://via.placeholder.com/150",
-            }}
-            style={styles.avatar}
-          />
-
-          <Text style={styles.nomeUsuario}>
-            {nome3}
-          </Text>
-
-          <Text style={styles.profissao}>
-            Analista de Sistemas
-          </Text>
-
-          <TouchableOpacity
-            style={
-              seguindo3
-                ? [styles.botao, styles.botaoDesativado]
-                : styles.botao
-            }
-            activeOpacity={0.7}
-            onPress={() => setSeguindo3(!seguindo3)}
-          >
-            <Text style={styles.textoBotao}>
-              {seguindo3 ? "Já Seguindo" : "Seguir"}
-            </Text>
-          </TouchableOpacity>
-
-          <TextInput
-            style={styles.input}
-            placeholder="Alterar nome..."
-            value={nome3}
-            onChangeText={(texto) => setNome3(texto)}
-          />
-
-        </View>
-
-
-        {/* JOGO DA VELHA */}
-        <JogoDaVelha />
-
+        <TouchableOpacity
+          style={styles.botaoVotar}
+          onPress={() => setVotosA((prev) => prev + 1)}
+        >
+          <Text style={styles.textoBotao}>Votar em A</Text>
+        </TouchableOpacity>
       </View>
-    </ScrollView>
+
+      {/* Candidato B */}
+      <View style={styles.candidatoContainer}>
+        <Text style={styles.nomeCandidato}>
+          Candidato B: {votosB} votos
+        </Text>
+
+        <Text style={styles.porcentagem}>
+          {porcentagemB.toFixed(1)}%
+        </Text>
+
+        <TouchableOpacity
+          style={styles.botaoVotar}
+          onPress={() => setVotosB((prev) => prev + 1)}
+        >
+          <Text style={styles.textoBotao}>Votar em B</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Candidato C */}
+      <View style={styles.candidatoContainer}>
+        <Text style={styles.nomeCandidato}>
+          Candidato C: {votosC} votos
+        </Text>
+
+        <Text style={styles.porcentagem}>
+          {porcentagemC.toFixed(1)}%
+        </Text>
+
+        <TouchableOpacity
+          style={styles.botaoVotar}
+          onPress={() => setVotosC((prev) => prev + 1)}
+        >
+          <Text style={styles.textoBotao}>Votar em C</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Rodapé */}
+      <View style={styles.rodape}>
+        <Text style={styles.totalTexto}>
+          Total de Votos: {totalVotos}
+        </Text>
+
+        <TouchableOpacity
+          style={styles.botaoZerar}
+          onPress={zerarUrna}
+        >
+          <Text style={styles.textoBotao}>Zerar Urna</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
   );
 }
 
-
 const styles = StyleSheet.create({
-
   container: {
     flex: 1,
+    backgroundColor: "#F5F5F5",
+    justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#F2F2F2",
-    paddingVertical: 20,
-  },
-
-  cartao: {
-    width: "85%",
     padding: 20,
-    alignItems: "center",
-    backgroundColor: "#FFFFFF",
-    borderRadius: 12,
-    marginBottom: 20,
   },
 
-  avatar: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    marginBottom: 15,
-  },
-
-  nomeUsuario: {
+  titulo: {
     fontSize: 24,
     fontWeight: "bold",
-    marginBottom: 5,
-  },
-
-  profissao: {
-    fontSize: 16,
-    color: "#666",
     marginBottom: 20,
-  },
-
-  botao: {
-    backgroundColor: "#0064A0",
-    paddingVertical: 10,
-    paddingHorizontal: 30,
-    borderRadius: 8,
-    marginBottom: 20,
-  },
-
-  /* Estilo aplicado quando já está seguindo */
-  botaoDesativado: {
-    backgroundColor: "#999999",
-  },
-
-  textoBotao: {
-    color: "#FFFFFF",
-    fontWeight: "bold",
-    fontSize: 16,
+    color: "#14325A",
   },
 
   input: {
     width: "100%",
+    backgroundColor: "#FFF",
     borderWidth: 1,
     borderColor: "#CCC",
     borderRadius: 8,
-    padding: 10,
-    textAlign: "center",
+    padding: 12,
+    marginBottom: 8,
   },
 
+  mesario: {
+    fontSize: 16,
+    marginBottom: 20,
+  },
+
+  candidatoContainer: {
+    width: "100%",
+    backgroundColor: "#FFF",
+    padding: 15,
+    borderRadius: 8,
+    marginBottom: 10,
+    alignItems: "center",
+    elevation: 2,
+  },
+
+  nomeCandidato: {
+    fontSize: 18,
+    marginBottom: 5,
+  },
+
+  porcentagem: {
+    fontSize: 16,
+    marginBottom: 10,
+    fontWeight: "bold",
+  },
+
+  botaoVotar: {
+    backgroundColor: "#0064A0",
+    padding: 10,
+    borderRadius: 5,
+    width: "80%",
+    alignItems: "center",
+  },
+
+  textoBotao: {
+    color: "#FFF",
+    fontWeight: "bold",
+  },
+
+  rodape: {
+    marginTop: 10,
+    alignItems: "center",
+    width: "100%",
+    borderTopWidth: 1,
+    borderColor: "#CCC",
+    paddingTop: 15,
+  },
+
+  totalTexto: {
+    fontSize: 20,
+    fontWeight: "bold",
+    marginBottom: 15,
+  },
+
+  botaoZerar: {
+    backgroundColor: "#808080",
+    padding: 15,
+    borderRadius: 5,
+  },
 });
+
+
 
