@@ -1,212 +1,203 @@
 
-import React, { useEffect, useState } from "react";
+import React, { useState, useRef } from "react";
 
 import {
   StyleSheet,
   Text,
   View,
   FlatList,
-  ActivityIndicator,
   TouchableOpacity,
-  TextInput,
-  Alert,
-  ScrollView,
+  ActivityIndicator,
 } from "react-native";
 
-import api from "./src/services/api";
+// Array inicial com 15 contatos
+const contatosIniciais = [
+  { id: "1", nome: "Alice Silva", telefone: "(31) 99999-1111" },
+  { id: "2", nome: "Bruno Costa", telefone: "(31) 98888-2222" },
+  { id: "3", nome: "Carlos Souza", telefone: "(31) 97777-3333" },
+  { id: "4", nome: "Diana Rocha", telefone: "(31) 96666-4444" },
+  { id: "5", nome: "Eduardo Lima", telefone: "(31) 95555-5555" },
+  { id: "6", nome: "Fernanda Alves", telefone: "(31) 94444-6666" },
+  { id: "7", nome: "Gabriel Mendes", telefone: "(31) 93333-7777" },
+  { id: "8", nome: "Helena Martins", telefone: "(31) 92222-8888" },
+  { id: "9", nome: "Igor Oliveira", telefone: "(31) 91111-9999" },
+  { id: "10", nome: "Julia Santos", telefone: "(31) 90000-1111" },
+  { id: "11", nome: "Lucas Ferreira", telefone: "(31) 98888-1111" },
+  { id: "12", nome: "Mariana Alves", telefone: "(31) 97777-2222" },
+  { id: "13", nome: "Pedro Henrique", telefone: "(31) 96666-3333" },
+  { id: "14", nome: "Rafaela Gomes", telefone: "(31) 95555-4444" },
+  { id: "15", nome: "Thiago Martins", telefone: "(31) 94444-5555" },
+];
 
-export default function App() {
-  const [utilizadores, setUtilizadores] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
+export default function Agenda() {
 
-  const [telaFormulario, setTelaFormulario] = useState(false);
-  const [nome, setNome] = useState("");
-  const [email, setEmail] = useState("");
-  const [enviando, setEnviando] = useState(false);
+  // Estado dos contatos
+  const [contatos, setContatos] = useState(contatosIniciais);
 
-  // Buscar utilizadores na API
-  const buscarDados = async (atualizacaoManual = false) => {
-    if (atualizacaoManual) {
-      setRefreshing(true);
-    } else {
-      setLoading(true);
-    }
+  // Estado do Pull-to-Refresh
+  const [carregando, setCarregando] = useState(false);
 
-    try {
-      const resposta = await api.get("/users");
+  // Estado da rolagem infinita
+  const [carregandoMais, setCarregandoMais] = useState(false);
 
-      setUtilizadores(resposta.data);
+  // Controle para evitar chamadas repetidas
+  const bloqueio = useRef(false);
 
-    } catch (erro) {
-      console.error("Erro ao buscar dados:", erro.message);
+  // Contador para gerar IDs únicos
+  const proximoId = useRef(16);
 
-      Alert.alert(
-        "Erro",
-        "Não foi possível carregar os utilizadores."
-      );
+  // Função para renderizar um contato
+  const renderizarContato = ({ item }) => (
+    <View style={styles.cardContato}>
 
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  };
-
-  // Executar quando a tela for aberta
-  useEffect(() => {
-    buscarDados();
-  }, []);
-
-  // Cadastrar utilizador usando POST
-  const cadastrarUtilizador = async () => {
-    if (!nome.trim() || !email.trim()) {
-      Alert.alert("Atenção", "Preencha todos os campos.");
-      return;
-    }
-
-    setEnviando(true);
-
-    try {
-      const resposta = await api.post("/users", {
-        name: nome,
-        email: email,
-      });
-
-      Alert.alert(
-        "Sucesso",
-        "Utilizador cadastrado! ID: " + resposta.data.id
-      );
-
-      setNome("");
-      setEmail("");
-      setTelaFormulario(false);
-
-    } catch (erro) {
-      console.error("Erro no cadastro:", erro.message);
-
-      Alert.alert("Erro", "Não foi possível cadastrar.");
-
-    } finally {
-      setEnviando(false);
-    }
-  };
-
-  // Indicador de carregamento
-  if (loading) {
-    return (
-      <View style={styles.centro}>
-        <ActivityIndicator
-          size="large"
-          color="#0000ff"
-        />
-
-        <Text>A carregar utilizadores...</Text>
-      </View>
-    );
-  }
-
-  return (
-    <View style={styles.container}>
-
-      <Text style={styles.titulo}>
-        Prática 07 - Consumo de API
+      <Text style={styles.nomeText}>
+        {item.nome}
       </Text>
 
-      <View style={styles.botoes}>
-        <TouchableOpacity
-          style={styles.botao}
-          onPress={() => setTelaFormulario(false)}
-        >
-          <Text style={styles.textoBotao}>
-            Utilizadores
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.botao}
-          onPress={() => setTelaFormulario(true)}
-        >
-          <Text style={styles.textoBotao}>
-            Novo cadastro
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      {telaFormulario ? (
-
-        <ScrollView style={styles.formulario}>
-
-          <Text style={styles.subtitulo}>
-            Cadastrar utilizador
-          </Text>
-
-          <TextInput
-            style={styles.input}
-            placeholder="Nome"
-            value={nome}
-            onChangeText={setNome}
-          />
-
-          <TextInput
-            style={styles.input}
-            placeholder="Email"
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-          />
-
-          <TouchableOpacity
-            style={styles.botaoEnviar}
-            onPress={cadastrarUtilizador}
-            disabled={enviando}
-          >
-            {enviando ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.textoBotao}>
-                Enviar cadastro
-              </Text>
-            )}
-          </TouchableOpacity>
-
-        </ScrollView>
-
-      ) : (
-
-        <View style={styles.listaContainer}>
-
-          <Text style={styles.subtitulo}>
-            Lista de Utilizadores
-          </Text>
-
-          <FlatList
-            data={utilizadores}
-            keyExtractor={(item) => item.id.toString()}
-            refreshing={refreshing}
-            onRefresh={() => buscarDados(true)}
-            renderItem={({ item }) => (
-
-              <View style={styles.cartao}>
-
-                <Text style={styles.nome}>
-                  {item.name}
-                </Text>
-
-                <Text style={styles.email}>
-                  {item.email}
-                </Text>
-
-              </View>
-
-            )}
-          />
-
-        </View>
-      )}
+      <Text style={styles.telefoneText}>
+        {item.telefone}
+      </Text>
 
     </View>
   );
+
+  // Função para renderizar separador
+  const renderizarSeparador = () => (
+    <View style={styles.separador} />
+  );
+
+  // Função para mostrar lista vazia
+  const renderizarVazio = () => (
+    <View style={styles.containerVazio}>
+      <Text style={styles.textoVazio}>
+        Agenda Vazia.
+      </Text>
+    </View>
+  );
+
+  // Limpar todos os contatos
+  const limparAgenda = () => {
+    setContatos([]);
+  };
+
+  // Desafio 1: Pull-to-Refresh
+  const atualizarAgenda = () => {
+
+    setCarregando(true);
+
+    setTimeout(() => {
+
+      setContatos(contatosIniciais);
+
+      setCarregando(false);
+
+    }, 2000);
+
+  };
+
+  // Desafio 2: Rolagem Infinita
+  const adicionarContatos = () => {
+
+    if (bloqueio.current || carregando || carregandoMais) {
+      return;
+    }
+
+    bloqueio.current = true;
+    setCarregandoMais(true);
+
+    setTimeout(() => {
+
+      const novosContatos = [
+        {
+          id: String(proximoId.current++),
+          nome: "Novo Contato " + (proximoId.current - 1),
+          telefone: "(31) 90000-0000",
+        },
+        {
+          id: String(proximoId.current++),
+          nome: "Novo Contato " + (proximoId.current - 1),
+          telefone: "(31) 90000-0001",
+        },
+        {
+          id: String(proximoId.current++),
+          nome: "Novo Contato " + (proximoId.current - 1),
+          telefone: "(31) 90000-0002",
+        },
+      ];
+
+      setContatos((anteriores) => [
+        ...anteriores,
+        ...novosContatos,
+      ]);
+
+      setCarregandoMais(false);
+      bloqueio.current = false;
+
+    }, 1000);
+
+  };
+
+  return (
+
+    <View style={styles.container}>
+
+      {/* Cabeçalho */}
+      <View style={styles.cabecalho}>
+
+        <Text style={styles.titulo}>
+          Minha Agenda
+        </Text>
+
+        <TouchableOpacity
+          style={styles.botaoLimpar}
+          onPress={limparAgenda}
+        >
+          <Text style={styles.textoBotao}>
+            Limpar Tudo
+          </Text>
+        </TouchableOpacity>
+
+      </View>
+
+      {/* Lista de contatos */}
+      <FlatList
+
+        data={contatos}
+
+        keyExtractor={(item) => item.id}
+
+        renderItem={renderizarContato}
+
+        ItemSeparatorComponent={renderizarSeparador}
+
+        ListEmptyComponent={renderizarVazio}
+
+        // Pull-to-Refresh
+        refreshing={carregando}
+
+        onRefresh={atualizarAgenda}
+
+        // Rolagem infinita
+        onEndReached={adicionarContatos}
+
+        onEndReachedThreshold={0.5}
+
+        ListFooterComponent={
+          carregandoMais ? (
+            <ActivityIndicator
+              size="large"
+              color="#14325A"
+              style={styles.carregandoMais}
+            />
+          ) : null
+        }
+
+      />
+
+    </View>
+
+  );
+
 }
 
 // Estilização
@@ -216,86 +207,68 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#F5F5F5",
     paddingTop: 50,
-    paddingHorizontal: 20,
   },
 
-  centro: {
-    flex: 1,
-    justifyContent: "center",
+  cabecalho: {
+    flexDirection: "row",
+    justifyContent: "space-between",
     alignItems: "center",
+    paddingHorizontal: 20,
+    marginBottom: 15,
   },
 
   titulo: {
     fontSize: 24,
     fontWeight: "bold",
-    marginBottom: 20,
     color: "#14325A",
   },
 
-  subtitulo: {
-    fontSize: 21,
-    fontWeight: "bold",
-    marginBottom: 20,
-    color: "#14325A",
-  },
-
-  botoes: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 20,
-  },
-
-  botao: {
-    backgroundColor: "#14325A",
-    padding: 12,
+  botaoLimpar: {
+    backgroundColor: "#D32F2F",
+    padding: 10,
     borderRadius: 8,
   },
 
   textoBotao: {
-    color: "#FFFFFF",
+    color: "#FFF",
     fontWeight: "bold",
   },
 
-  listaContainer: {
-    flex: 1,
+  cardContato: {
+    padding: 20,
+    backgroundColor: "#FFF",
   },
 
-  cartao: {
-    backgroundColor: "#FFFFFF",
-    padding: 15,
-    marginBottom: 10,
-    borderRadius: 8,
-    elevation: 2,
-  },
-
-  nome: {
+  nomeText: {
     fontSize: 18,
     fontWeight: "bold",
+    color: "#333",
   },
 
-  email: {
-    color: "#666666",
+  telefoneText: {
+    fontSize: 16,
+    color: "#666",
     marginTop: 5,
   },
 
-  formulario: {
-    flex: 1,
+  separador: {
+    height: 1,
+    backgroundColor: "#E0E0E0",
   },
 
-  input: {
-    backgroundColor: "#FFFFFF",
-    padding: 14,
-    borderRadius: 8,
-    marginBottom: 15,
-    borderWidth: 1,
-    borderColor: "#CCCCCC",
-  },
-
-  botaoEnviar: {
-    backgroundColor: "#14325A",
-    padding: 15,
-    borderRadius: 8,
+  containerVazio: {
     alignItems: "center",
+    marginTop: 50,
+  },
+
+  textoVazio: {
+    fontSize: 18,
+    color: "#808080",
+    fontStyle: "italic",
+  },
+
+  carregandoMais: {
+    marginVertical: 20,
   },
 
 });
