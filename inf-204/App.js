@@ -1,301 +1,340 @@
 
-import React, { useEffect, useState } from "react";
+import React, { useState, useEffect } from "react";
 
 import {
   StyleSheet,
   Text,
   View,
-  FlatList,
-  ActivityIndicator,
-  TouchableOpacity,
   TextInput,
-  Alert,
-  ScrollView,
+  TouchableOpacity,
+  FlatList,
+  Alert
 } from "react-native";
 
-import api from "./src/services/api";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { SQLiteProvider, useSQLiteContext } from "expo-sqlite";
 
+// Inicialização do banco de dados
+const iniciarBanco = async (db) => {
+  await db.execAsync("PRAGMA journal_mode = WAL;");
+
+  await db.execAsync(`
+    CREATE TABLE IF NOT EXISTS tarefas (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      descricao TEXT NOT NULL,
+      concluida INTEGER DEFAULT 0
+    );
+  `);
+
+  console.log("Base de Dados inicializada!");
+};
+
+// Componente principal
 export default function App() {
-  const [utilizadores, setUtilizadores] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
+  return (
+    <SQLiteProvider
+      databaseName="app-database.db"
+      onInit={iniciarBanco}
+    >
+      <EcraPrincipal />
+    </SQLiteProvider>
+  );
+}
 
-  const [telaFormulario, setTelaFormulario] = useState(false);
-  const [nome, setNome] = useState("");
-  const [email, setEmail] = useState("");
-  const [enviando, setEnviando] = useState(false);
+function EcraPrincipal() {
+  const db = useSQLiteContext();
 
-  // Buscar utilizadores na API
-  const buscarDados = async (atualizacaoManual = false) => {
-    if (atualizacaoManual) {
-      setRefreshing(true);
-    } else {
-      setLoading(true);
-    }
+  const [usuario, setUsuario] = useState({
+    nome: "Visitante",
+    logado: true
+  });
 
+  const [tarefas, setTarefas] = useState([]);
+  const [novaTarefa, setNovaTarefa] = useState("");
+
+  // Carregar dados ao abrir a tela
+  useEffect(() => {
+    carregarPreferencias();
+    carregarTarefas();
+  }, []);
+
+  // Buscar usuário no AsyncStorage
+  const carregarPreferencias = async () => {
     try {
-      const resposta = await api.get("/users");
+      const usuarioSalvo = await AsyncStorage.getItem("@AppTarefas:Usuario");
 
-      setUtilizadores(resposta.data);
-
+      if (usuarioSalvo) {
+        setUsuario(JSON.parse(usuarioSalvo));
+      }
     } catch (erro) {
-      console.error("Erro ao buscar dados:", erro.message);
-
-      Alert.alert(
-        "Erro",
-        "Não foi possível carregar os utilizadores."
-      );
-
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
+      console.error("Erro ao carregar usuário:", erro);
     }
   };
 
-  // Executar quando a tela for aberta
-  useEffect(() => {
-    buscarDados();
-  }, []);
+  // Salvar objeto no AsyncStorage
+  const salvarNome = async () => {
+    try {
+      const novoUsuario = {
+        nome: "Estudante INF204",
+        logado: true
+      };
 
-  // Cadastrar utilizador usando POST
-  const cadastrarUtilizador = async () => {
-    if (!nome.trim() || !email.trim()) {
-      Alert.alert("Atenção", "Preencha todos os campos.");
+      await AsyncStorage.setItem(
+        "@AppTarefas:Usuario",
+        JSON.stringify(novoUsuario)
+      );
+
+      setUsuario(novoUsuario);
+    } catch (erro) {
+      console.error("Erro ao salvar usuário:", erro);
+    }
+  };
+
+  // Buscar tarefas no SQLite
+  const carregarTarefas = async () => {
+    try {
+      const resultados = await db.getAllAsync(
+        "SELECT * FROM tarefas ORDER BY id DESC;"
+      );
+
+      setTarefas(resultados);
+    } catch (erro) {
+      console.error("Falha ao ler tarefas:", erro);
+    }
+  };
+
+  // Adicionar tarefa
+  const adicionarTarefa = async () => {
+    if (novaTarefa.trim() === "") {
+      Alert.alert("Atenção", "Digite uma tarefa!");
       return;
     }
 
-    setEnviando(true);
-
     try {
-      const resposta = await api.post("/users", {
-        name: nome,
-        email: email,
-      });
-
-      Alert.alert(
-        "Sucesso",
-        "Utilizador cadastrado! ID: " + resposta.data.id
+      await db.runAsync(
+        "INSERT INTO tarefas (descricao, concluida) VALUES (?, ?);",
+        [novaTarefa.trim(), 0]
       );
 
-      setNome("");
-      setEmail("");
-      setTelaFormulario(false);
-
+      setNovaTarefa("");
+      await carregarTarefas();
     } catch (erro) {
-      console.error("Erro no cadastro:", erro.message);
-
-      Alert.alert("Erro", "Não foi possível cadastrar.");
-
-    } finally {
-      setEnviando(false);
+      console.error("Erro ao adicionar tarefa:", erro);
     }
   };
 
-  // Indicador de carregamento
-  if (loading) {
-    return (
-      <View style={styles.centro}>
-        <ActivityIndicator
-          size="large"
-          color="#0000ff"
-        />
+  // Marcar ou desmarcar tarefa
+  const alternarStatus = async (id, statusAtual) => {
+    try {
+      const novoStatus = statusAtual === 1 ? 0 : 1;
 
-        <Text>A carregar utilizadores...</Text>
-      </View>
-    );
-  }
+      await db.runAsync(
+        "UPDATE tarefas SET concluida = ? WHERE id = ?;",
+        [novoStatus, id]
+      );
 
+      await carregarTarefas();
+    } catch (erro) {
+      console.error("Erro ao atualizar tarefa:", erro);
+    }
+  };
+
+  // Excluir tarefa
+  const excluirTarefa = async (id) => {
+    try {
+      await db.runAsync(
+        "DELETE FROM tarefas WHERE id = ?;",
+        [id]
+      );
+
+      await carregarTarefas();
+    } catch (erro) {
+      console.error("Erro ao excluir tarefa:", erro);
+    }
+  };
+
+  // Interface
   return (
     <View style={styles.container}>
-
-      <Text style={styles.titulo}>
-        Prática 07 - Consumo de API
-      </Text>
-
-      <View style={styles.botoes}>
-        <TouchableOpacity
-          style={styles.botao}
-          onPress={() => setTelaFormulario(false)}
-        >
-          <Text style={styles.textoBotao}>
-            Utilizadores
+      <View style={styles.cabecalho}>
+        <View>
+          <Text style={styles.titulo}>
+            Olá, {usuario.nome}!
           </Text>
-        </TouchableOpacity>
+
+          <Text style={styles.subtitulo}>
+            Minhas tarefas
+          </Text>
+        </View>
 
         <TouchableOpacity
-          style={styles.botao}
-          onPress={() => setTelaFormulario(true)}
+          style={styles.botaoAcao}
+          onPress={salvarNome}
         >
           <Text style={styles.textoBotao}>
-            Novo cadastro
+            Mudar Nome
           </Text>
         </TouchableOpacity>
       </View>
 
-      {telaFormulario ? (
+      <View style={styles.inputContainer}>
+        <TextInput
+          style={styles.input}
+          placeholder="Nova tarefa..."
+          value={novaTarefa}
+          onChangeText={setNovaTarefa}
+        />
 
-        <ScrollView style={styles.formulario}>
+        <TouchableOpacity
+          style={styles.botaoAdd}
+          onPress={adicionarTarefa}
+        >
+          <Text style={styles.textoBotao}>Add</Text>
+        </TouchableOpacity>
+      </View>
 
-          <Text style={styles.subtitulo}>
-            Cadastrar utilizador
+      <FlatList
+        data={tarefas}
+        keyExtractor={(item) => item.id.toString()}
+        ListEmptyComponent={
+          <Text style={styles.vazio}>
+            Nenhuma tarefa cadastrada.
           </Text>
-
-          <TextInput
-            style={styles.input}
-            placeholder="Nome"
-            value={nome}
-            onChangeText={setNome}
-          />
-
-          <TextInput
-            style={styles.input}
-            placeholder="Email"
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-          />
-
-          <TouchableOpacity
-            style={styles.botaoEnviar}
-            onPress={cadastrarUtilizador}
-            disabled={enviando}
-          >
-            {enviando ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.textoBotao}>
-                Enviar cadastro
+        }
+        renderItem={({ item }) => (
+          <View style={styles.cartao}>
+            <TouchableOpacity
+              style={styles.tarefa}
+              onPress={() =>
+                alternarStatus(item.id, item.concluida)
+              }
+            >
+              <Text
+                style={[
+                  styles.textoTarefa,
+                  item.concluida === 1 && styles.textoConcluido
+                ]}
+              >
+                {item.concluida === 1 ? "✓ " : "○ "}
+                {item.descricao}
               </Text>
-            )}
-          </TouchableOpacity>
+            </TouchableOpacity>
 
-        </ScrollView>
-
-      ) : (
-
-        <View style={styles.listaContainer}>
-
-          <Text style={styles.subtitulo}>
-            Lista de Utilizadores
-          </Text>
-
-          <FlatList
-            data={utilizadores}
-            keyExtractor={(item) => item.id.toString()}
-            refreshing={refreshing}
-            onRefresh={() => buscarDados(true)}
-            renderItem={({ item }) => (
-
-              <View style={styles.cartao}>
-
-                <Text style={styles.nome}>
-                  {item.name}
-                </Text>
-
-                <Text style={styles.email}>
-                  {item.email}
-                </Text>
-
-              </View>
-
-            )}
-          />
-
-        </View>
-      )}
-
+            <TouchableOpacity
+              style={styles.botaoExcluir}
+              onPress={() => excluirTarefa(item.id)}
+            >
+              <Text style={styles.textoExcluir}>X</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      />
     </View>
   );
 }
 
-// Estilização
+// Estilos
 const styles = StyleSheet.create({
-
   container: {
     flex: 1,
     backgroundColor: "#F5F5F5",
     paddingTop: 50,
-    paddingHorizontal: 20,
+    paddingHorizontal: 20
   },
 
-  centro: {
-    flex: 1,
-    justifyContent: "center",
+  cabecalho: {
+    flexDirection: "row",
+    justifyContent: "space-between",
     alignItems: "center",
+    marginBottom: 20
   },
 
   titulo: {
     fontSize: 24,
     fontWeight: "bold",
-    marginBottom: 20,
-    color: "#14325A",
+    color: "#14325A"
   },
 
   subtitulo: {
-    fontSize: 21,
-    fontWeight: "bold",
-    marginBottom: 20,
-    color: "#14325A",
+    fontSize: 16,
+    color: "#666",
+    marginTop: 5
   },
 
-  botoes: {
+  botaoAcao: {
+    backgroundColor: "#808080",
+    padding: 10,
+    borderRadius: 8
+  },
+
+  inputContainer: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 20,
+    marginBottom: 20
   },
 
-  botao: {
-    backgroundColor: "#14325A",
-    padding: 12,
+  input: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: "#CCC",
     borderRadius: 8,
+    padding: 10,
+    backgroundColor: "#FFF"
+  },
+
+  botaoAdd: {
+    backgroundColor: "#0064A0",
+    padding: 15,
+    borderRadius: 8,
+    marginLeft: 10,
+    justifyContent: "center"
   },
 
   textoBotao: {
-    color: "#FFFFFF",
-    fontWeight: "bold",
-  },
-
-  listaContainer: {
-    flex: 1,
+    color: "#FFF",
+    fontWeight: "bold"
   },
 
   cartao: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "#FFF",
     padding: 15,
     marginBottom: 10,
     borderRadius: 8,
     elevation: 2,
-  },
-
-  nome: {
-    fontSize: 18,
-    fontWeight: "bold",
-  },
-
-  email: {
-    color: "#666666",
-    marginTop: 5,
-  },
-
-  formulario: {
-    flex: 1,
-  },
-
-  input: {
-    backgroundColor: "#FFFFFF",
-    padding: 14,
-    borderRadius: 8,
-    marginBottom: 15,
-    borderWidth: 1,
-    borderColor: "#CCCCCC",
-  },
-
-  botaoEnviar: {
-    backgroundColor: "#14325A",
-    padding: 15,
-    borderRadius: 8,
+    flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-between"
   },
 
+  tarefa: {
+    flex: 1
+  },
+
+  textoTarefa: {
+    fontSize: 18,
+    color: "#333"
+  },
+
+  textoConcluido: {
+    textDecorationLine: "line-through",
+    color: "#999"
+  },
+
+  botaoExcluir: {
+    backgroundColor: "#DC2626",
+    padding: 10,
+    borderRadius: 6,
+    marginLeft: 10
+  },
+
+  textoExcluir: {
+    color: "#FFF",
+    fontWeight: "bold"
+  },
+
+  vazio: {
+    textAlign: "center",
+    color: "#888",
+    marginTop: 30,
+    fontSize: 16
+  }
 });
